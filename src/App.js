@@ -1,8 +1,10 @@
 import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCheck, faObjectGroup, faPlus, faTrash, faTrashAlt, faWind } from '@fortawesome/free-solid-svg-icons'
+import { faArrowAltCircleDown, faCheck, faObjectGroup, faPlus, faSave, faTrash, faTrashAlt, faWind } from '@fortawesome/free-solid-svg-icons'
 import Sticky from './components/Sticky';
 import ColourPicker from './components/ColourPicker';
+
+let fileReader;
 
 class App extends React.Component {
   constructor(props){
@@ -12,6 +14,7 @@ class App extends React.Component {
       stickies:[],
       colourPickerOpen: false,
       pickerState: [0, 0],
+      showSaveOptions: false
     }
   }
 
@@ -206,9 +209,57 @@ class App extends React.Component {
     this.saveChanges(newList)
   }
 
+  download = (data, filename) => {
+    var blob = new Blob([data], {type:'octet/stream'});
+
+    //IE 10+
+    if (window.navigator.msSaveBlob) {
+        window.navigator.msSaveBlob(blob, filename);
+    }
+    else {
+        //Everything else
+        var url = window.URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        document.body.appendChild(a);
+        a.href = url;
+        a.download = filename;
+
+        setTimeout(() => {
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }, 1);
+    }
+  }
+
+  handleFileRead = () => {
+    let content = fileReader.result
+    let data = JSON.parse(content)
+    this.saveChanges(data.stickies)
+  }
+
+  handleFileChosen = (file) => {
+    fileReader = new FileReader()
+    fileReader.onloadend = this.handleFileRead
+    fileReader.readAsText(file)
+  }
+
+  toggleShowSaveOptions = () => {
+    this.setState({showSaveOptions: !this.state.showSaveOptions})
+  }
+
   render(){
     return (
       <div id="screen" className="h-screen p-3">
+        <FontAwesomeIcon onClick={()=>this.toggleShowSaveOptions()} className="hover:shadow" size="2x" icon={faSave} />
+        <div className={`p-2 flex gap-2 ${this.state.showSaveOptions ? "" : "hidden"}`}>
+          <button className="font-bold p-1 border-2 px-2 py-1 rounded-md" onClick={()=>this.download(JSON.stringify({stickies: this.state.stickies}), "stickies_data.txt")}>Save Data</button>
+          <label className="pt-3">or</label>
+            <input className="p-1 border-2 px-3 py-2 rounded-md"
+            type="file" id="file" accept=".txt" onChange={e => this.handleFileChosen(e.target.files[0])}></input>
+          <label className="pt-3">to load from</label>
+        </div>
+
          <div className="flex flex-wrap gap-4 justify-center items-center mx-auto h-full w-full p-3">
            {this.buildStickies()}
            <ColourPicker isOpen={this.state.colourPickerOpen} toggleOpen={this.toggleColourPicker} save={this.saveColourChange} />        
